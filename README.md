@@ -19,6 +19,29 @@ Pair-wise GSB 标注任务仓库（第 18 批 / 297）。
 ./mvnw -q verify
 ```
 
+
+## 实现说明
+
+源码位于 `src/main/java/com/example/gsb/placement/`：
+
+| 类 | 职责 |
+|------|------|
+| `Node` / `Topology` | 节点登记及其机架、可用域（交换机）归属 |
+| `Block` / `PlacementConfig` | 数据块与放置策略（副本数、最小可用数、均衡比例） |
+| `RackAwarePlacementEngine` | 放置引擎：跨机架分散 -> 机架内跨可用域 -> 域内最空闲节点；节点增删后的 `rebalance` 最小迁移重放 |
+| `RackFailureSimulator` | 随机/指定机架故障模拟与存活副本校验 |
+| `PlacementPlan` / `Migration` | 放置方案与迁移记录 |
+| `PlacementStats` | 机架分布、可用域分布、节点负载、均衡偏差 (max-min)/avg、迁移数据量 |
+| `PlacementException` | 约束冲突的明确报错（组合上限、minAvailable 不可达、均衡不可达、无承接节点等） |
+
+关键约束：同一数据块在同一可用域内至多 1 个副本；每个机架至多容纳
+`replicationFactor - minAvailable` 个副本，保证任意单机架故障后存活副本数
+不低于 `minAvailable`；均衡通过"最满载 -> 最空闲且严格缩差"的贪心迁移收敛，
+迁移量计入统计。
+
+测试位于 `src/test/java/com/example/gsb/placement/`，覆盖跨机架分散、
+机架故障存活（多种子随机）、均衡约束、节点增删重放、约束冲突与统计，共 36 例。
+
 ## 任务提示词
 
 以下为本题完整的 User Prompt 原文，两次执行必须使用完全相同的文本。
